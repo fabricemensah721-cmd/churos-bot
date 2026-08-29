@@ -1,6 +1,16 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const Groq = require('groq-sdk');
+const http = require('http');
 require('dotenv').config();
+
+// Dummy-Webserver für Render (verhindert den Port-Timeout)
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Bot is running!');
+}).listen(PORT, () => {
+  console.log(`Webserver läuft auf Port ${PORT}`);
+});
 
 const client = new Client({
   intents: [
@@ -12,7 +22,6 @@ const client = new Client({
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Exakte Kanal-ID als String
 const TARGET_CHANNEL_ID = '1542714940995928084';
 
 client.once('ready', () => {
@@ -20,13 +29,8 @@ client.once('ready', () => {
 });
 
 client.on('messageCreate', async (message) => {
-  // 1. Ignoriere Bot-Nachrichten
   if (message.author.bot) return;
-
-  // 2. Erzwungener Kanal-Filter (bricht ab, wenn die ID nicht exakt übereinstimmt)
-  if (String(message.channel.id) !== TARGET_CHANNEL_ID) {
-    return;
-  }
+  if (String(message.channel.id) !== TARGET_CHANNEL_ID) return;
 
   try {
     const response = await groq.chat.completions.create({
