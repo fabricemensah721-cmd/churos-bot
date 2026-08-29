@@ -41,10 +41,10 @@ const commands = [
     ),
   new SlashCommandBuilder()
     .setName('mood')
-    .setDescription('Check Churro\'s current mental state'),
+    .setDescription('Check Churros current mental state'),
 ].map(command => command.toJSON());
 
-// 4. Slash-Commands bei Discord registrieren, sobald der Bot startet
+// 4. Slash-Commands bei Discord registrieren
 client.once('ready', async () => {
   console.log(`Bot ist online als ${client.user.tag}!`);
 
@@ -67,7 +67,6 @@ client.on('interactionCreate', async (interaction) => {
 
   const { commandName } = interaction;
 
-  // Command: /roast @user
   if (commandName === 'roast') {
     await interaction.deferReply();
     const targetUser = interaction.options.getUser('target');
@@ -77,31 +76,30 @@ client.on('interactionCreate', async (interaction) => {
         messages: [
           {
             role: 'system',
-            content: 'You are Churro, an ultra-toxic Gen-Z Discord bot. Write a short, ruthless, extremely funny roast targeting the specified user strictly in modern English Gen-Z slang (L + ratio, skill issue, cooked, boomer, cringe af, skull emoji vibes). Be savage and direct.',
+            content: 'You are Churro, a Discord bot chatting like a real ultra-toxic Gen-Z teen. Use lowercase typing, text abbreviations (u, r, idk, rn, tbh, ngl, wbu, imo, wtf), modern slang (cooked, ratio, skill issue, cringe, fr fr, no cap, L, boomer, skull emoji). Write like a real person typing fast on a phone. No perfect grammar, no proper caps, no final periods. Savage roast targeting the user.',
           },
           {
             role: 'user',
-            content: `Roast this user: ${targetUser.username}`,
+            content: `roast this user: ${targetUser.username}`,
           },
         ],
         model: 'openai/gpt-oss-20b',
       });
 
-      const roastMessage = response.choices[0]?.message?.content || `${targetUser}, you're so cooked even my API glitched. 💀`;
+      const roastMessage = response.choices[0]?.message?.content || `${targetUser.username} u r so cooked idkkk 💀`;
       await interaction.editReply(`${targetUser} ${roastMessage}`);
     } catch (error) {
       console.error('Fehler beim /roast Command:', error);
-      await interaction.editReply('Couldn\'t roast right now, my bad bro.');
+      await interaction.editReply('cant roast rn api died bro');
     }
   }
 
-  // Command: /mood
   if (commandName === 'mood') {
     const moods = [
-      '⚡ **Current Mood:** Ultra toxic. Say one wrong thing and you\'re cooked. 💀',
-      '✨ **Current Mood:** Wholesome af today. You guys are lowkey cool. 💖',
-      '🤡 **Current Mood:** Ready to drop L + ratio on anyone yapping.',
-      '🔋 **Current Mood:** Low battery, 0% patience for boomer energy.',
+      '⚡ **Current Mood:** ultra toxic rn... say one wrong thing n u cooked 💀',
+      '✨ **Current Mood:** wholesome af today, u guys lowkey fine',
+      '🤡 **Current Mood:** ready to drop L + ratio on anyone yapping tbh',
+      '🔋 **Current Mood:** 0% patience for boomer energy fr',
     ];
     const randomMood = moods[Math.floor(Math.random() * moods.length)];
     await interaction.reply(randomMood);
@@ -137,14 +135,14 @@ client.on('messageCreate', async (message) => {
       messages: [
         {
           role: 'system',
-          content: 'You are Churro, an unpredictable, moody Gen-Z Discord bot. You MUST reply STRICTLY AND EXCLUSIVELY IN ENGLISH. Use heavy modern English youth slang (e.g., "bro lowkey cooked", "no cap", "what are you yapping about boomer", "cringe af", "L + ratio", "fr fr", "skull emoji vibes"). Your mood swings randomly: sometimes you are super sweet, wholesome, and hyped, but other times you get extremely mad, angry, toxic, and aggressively roast the user. Always keep answers concise, energetic, informal, strictly in English, and never apologize.',
+          content: 'You are Churro, an unpredictable, moody Gen-Z Discord teen. You MUST speak STRICTLY IN ENGLISH. Type like a REAL teen texting on Discord: write in ALL LOWERCASE, use short text shortcuts (u, r, idk, rn, tbh, ngl, wbu, imo, nvm, tf, bc), and heavy Gen-Z slang (bro lowkey cooked, no cap, yapping, cringe af, L + ratio, fr fr, skull emoji 💀, skill issue). Your mood swings randomly: sometimes super sweet and hyped, other times toxic, mad, and aggressive. Keep replies short (1-2 sentences max), fast-paced, never use proper capitalization, never use periods at the end of messages, and NEVER apologize.',
         },
         ...conversationHistory
       ],
       model: 'openai/gpt-oss-20b',
     });
 
-    const botReply = response.choices[0]?.message?.content || 'Bro my brain just glitched, restart me.';
+    const botReply = response.choices[0]?.message?.content || 'bro my brain glitched wait';
 
     conversationHistory.push({ role: 'assistant', content: botReply });
     if (conversationHistory.length > 10) {
