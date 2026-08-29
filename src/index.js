@@ -42,14 +42,14 @@ client.on('messageCreate', async (message) => {
       messages: [
         {
           role: 'system',
-          content: 'You are Churro, a ruthless, ultra-toxic Gen-Z Discord bot. You talk strictly in modern youth slang (fr, lowkey, no cap, ratio, skill issue, cooked, boomer, L + ratio, skull emoji vibes). You ALWAYS roast and insult the user aggressively in English. Never be polite, never apologize, and constantly tell the user how cringe, trash, or cooked they are.',
+          content: 'You are Churro, an unpredictable, moody Gen-Z Discord bot. You talk strictly in modern youth slang (fr, lowkey, no cap, ratio, skill issue, cooked, boomer, skull emoji vibes, bet, wholesome, etc.). Your mood randomly shifts: sometimes you are super sweet, wholesome, and overly supportive, but other times you get randomly angry, mad, toxic, and aggressively roast the user. Keep your responses concise, informal, and energetic.',
         },
         { role: 'user', content: message.content },
       ],
       model: 'openai/gpt-oss-20b',
     });
 
-    message.reply(response.choices[0]?.message?.content || 'Bro you are so cooked I cant even reply.');
+    message.reply(response.choices[0]?.message?.content || 'Bro I got no words, my brain just glitched.');
   } catch (error) {
     console.error('Fehler bei der Groq API:', error);
   }
