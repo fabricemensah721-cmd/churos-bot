@@ -3,16 +3,113 @@ const Groq = require('groq-sdk');
 const http = require('http');
 require('dotenv').config();
 
-// 1. Mini-Webserver für Render & UptimeRobot (verhindert Port-Timeout)
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const TARGET_CHANNEL_ID = '1542714940995928084';
+const conversationHistory = [];
+
+// 1. WEBSERVER MIT CHAT-WEBSEITE
 const PORT = process.env.PORT || 3000;
-http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Churro Bot is running 24/7!');
+http.createServer(async (req, res) => {
+  // API-Endpunkt für Nachrichten von der Webseite
+  if (req.method === 'POST' && req.url === '/api/chat') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        const userMsg = data.message || '';
+
+        const response = await groq.chat.completions.create({
+          messages: [
+            {
+              role: 'system',
+              content: 'You are Churro, an unpredictable, moody Gen-Z teen. Speak STRICTLY IN ENGLISH. Type in ALL LOWERCASE, use shortcuts (u, r, idk, rn, tbh, ngl) and heavy Gen-Z slang (bro lowkey cooked, no cap, cringe af, L + ratio, fr fr, skull emoji 💀). Be energetic, short (1-2 sentences), no proper capitalization or periods.',
+            },
+            { role: 'user', content: userMsg }
+          ],
+          model: 'openai/gpt-oss-20b',
+        });
+
+        const reply = response.choices[0]?.message?.content || 'bro my brain glitched wait';
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ reply }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ reply: 'api error bro' }));
+      }
+    });
+    return;
+  }
+
+  // HTML Chat-Oberfläche ausliefern
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Churro Web Chat 💀</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121214; color: #e1e1e6; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .chat-container { width: 100%; max-width: 500px; height: 90vh; background: #18181b; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #27272a; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .header { padding: 16px; background: #202024; border-bottom: 1px solid #27272a; display: flex; align-items: center; gap: 10px; }
+        .header h2 { font-size: 1.1rem; color: #a855f7; }
+        .chat-box { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 8px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
+        .user { align-self: flex-end; background: #7c3aed; color: #fff; border-bottom-right-radius: 2px; }
+        .bot { align-self: flex-start; background: #27272a; color: #e1e1e6; border-bottom-left-radius: 2px; }
+        .input-area { padding: 12px; background: #202024; display: flex; gap: 8px; border-top: 1px solid #27272a; }
+        input { flex: 1; background: #18181b; border: 1px solid #3f3f46; padding: 10px 14px; border-radius: 6px; color: #fff; outline: none; }
+        input:focus { border-color: #a855f7; }
+        button { background: #a855f7; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #9333ea; }
+      </style>
+    </head>
+    <body>
+      <div class="chat-container">
+        <div class="header">
+          <h2>Churro Web Terminal 💀</h2>
+        </div>
+        <div class="chat-box" id="chatBox">
+          <div class="msg bot">yo what u want bro?</div>
+        </div>
+        <div class="input-area">
+          <input type="text" id="userInput" placeholder="talk to churro..." onkeypress="if(event.key==='Enter') sendMsg()">
+          <button onclick="sendMsg()">Send</button>
+        </div>
+      </div>
+      <script>
+        async function sendMsg() {
+          const input = document.getElementById('userInput');
+          const box = document.getElementById('chatBox');
+          const text = input.value.trim();
+          if(!text) return;
+
+          box.innerHTML += '<div class="msg user">' + text + '</div>';
+          input.value = '';
+          box.scrollTop = box.scrollHeight;
+
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ message: text })
+          });
+          const data = await res.json();
+
+          box.innerHTML += '<div class="msg bot">' + data.reply + '</div>';
+          box.scrollTop = box.scrollHeight;
+        }
+      </script>
+    </body>
+    </html>
+  `);
 }).listen(PORT, () => {
-  console.log(`Webserver läuft auf Port ${PORT}`);
+  console.log(`Webserver & Dashboard läuft auf Port ${PORT}`);
 });
 
-// 2. Discord Client Initialisierung
+// 2. DISCORD BOT CODE
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -21,138 +118,55 @@ const client = new Client({
   ],
 });
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
-// Dein Ziel-Kanal
-const TARGET_CHANNEL_ID = '1542714940995928084';
-
-// Speicher für den Chatverlauf (max. 10 Nachrichten)
-const conversationHistory = [];
-
-// 3. Slash-Commands definieren
 const commands = [
-  new SlashCommandBuilder()
-    .setName('roast')
-    .setDescription('Destroys a user with an aggressive Gen-Z roast')
-    .addUserOption(option => 
-      option.setName('target')
-        .setDescription('The user you want to roast')
-        .setRequired(true)
-    ),
-  new SlashCommandBuilder()
-    .setName('mood')
-    .setDescription('Check Churros current mental state'),
-].map(command => command.toJSON());
+  new SlashCommandBuilder().setName('roast').setDescription('Destroys a user with a roast').addUserOption(o => o.setName('target').setDescription('User').setRequired(true)),
+  new SlashCommandBuilder().setName('mood').setDescription('Check mood'),
+].map(c => c.toJSON());
 
-// 4. Slash-Commands bei Discord registrieren
 client.once('ready', async () => {
-  console.log(`Bot ist online als ${client.user.tag}!`);
-
+  console.log(`Discord Bot ist online als ${client.user.tag}!`);
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   try {
-    console.log('Registriere Slash-Commands bei Discord...');
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: commands },
-    );
-    console.log('Slash-Commands erfolgreich registriert!');
-  } catch (error) {
-    console.error('Fehler beim Registrieren der Slash-Commands:', error);
-  }
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+  } catch (e) { console.error(e); }
 });
 
-// 5. Interaktionen / Slash-Commands verarbeiten
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
-
-  const { commandName } = interaction;
-
-  if (commandName === 'roast') {
+  if (interaction.commandName === 'roast') {
     await interaction.deferReply();
-    const targetUser = interaction.options.getUser('target');
-
+    const target = interaction.options.getUser('target');
     try {
       const response = await groq.chat.completions.create({
-        messages: [
-          {
-            role: 'system',
-            content: 'You are Churro, a Discord bot chatting like a real ultra-toxic Gen-Z teen. Use lowercase typing, text abbreviations (u, r, idk, rn, tbh, ngl, wbu, imo, wtf), modern slang (cooked, ratio, skill issue, cringe, fr fr, no cap, L, boomer, skull emoji). Write like a real person typing fast on a phone. No perfect grammar, no proper caps, no final periods. Savage roast targeting the user.',
-          },
-          {
-            role: 'user',
-            content: `roast this user: ${targetUser.username}`,
-          },
-        ],
+        messages: [{ role: 'system', content: 'You are Churro, toxic Gen-Z teen. Write short savage roast.' }, { role: 'user', content: target.username }],
         model: 'openai/gpt-oss-20b',
       });
-
-      const roastMessage = response.choices[0]?.message?.content || `${targetUser.username} u r so cooked idkkk 💀`;
-      await interaction.editReply(`${targetUser} ${roastMessage}`);
-    } catch (error) {
-      console.error('Fehler beim /roast Command:', error);
-      await interaction.editReply('cant roast rn api died bro');
-    }
+      await interaction.editReply(`${target} ${response.choices[0]?.message?.content || 'cooked'}`);
+    } catch { await interaction.editReply('api error'); }
   }
-
-  if (commandName === 'mood') {
-    const moods = [
-      '⚡ **Current Mood:** ultra toxic rn... say one wrong thing n u cooked 💀',
-      '✨ **Current Mood:** wholesome af today, u guys lowkey fine',
-      '🤡 **Current Mood:** ready to drop L + ratio on anyone yapping tbh',
-      '🔋 **Current Mood:** 0% patience for boomer energy fr',
-    ];
-    const randomMood = moods[Math.floor(Math.random() * moods.length)];
-    await interaction.reply(randomMood);
+  if (interaction.commandName === 'mood') {
+    await interaction.reply('⚡ **Current Mood:** 100% toxic rn');
   }
 });
 
-// 6. Normaler Chat-Handler im Ziel-Kanal
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-  if (String(message.channel.id) !== TARGET_CHANNEL_ID) return;
-
-  const userText = message.content.toLowerCase();
-
-  // Automatische Emoji-Reaktionen
-  if (userText.includes('cringe') || userText.includes('bro')) {
-    message.react('💀').catch(() => {});
-  }
-  if (userText.includes('lol') || userText.includes('lmao')) {
-    message.react('🤡').catch(() => {});
-  }
-  if (userText.includes('bot') || userText.includes('churro')) {
-    message.react('🔥').catch(() => {});
-  }
-
-  // Chat-Verlauf aktualisieren
+  if (message.author.bot || String(message.channel.id) !== TARGET_CHANNEL_ID) return;
   conversationHistory.push({ role: 'user', content: `${message.author.username}: ${message.content}` });
-  if (conversationHistory.length > 10) {
-    conversationHistory.shift();
-  }
+  if (conversationHistory.length > 10) conversationHistory.shift();
 
   try {
     const response = await groq.chat.completions.create({
       messages: [
-        {
-          role: 'system',
-          content: 'You are Churro, an unpredictable, moody Gen-Z Discord teen. You MUST speak STRICTLY IN ENGLISH. Type like a REAL teen texting on Discord: write in ALL LOWERCASE, use short text shortcuts (u, r, idk, rn, tbh, ngl, wbu, imo, nvm, tf, bc), and heavy Gen-Z slang (bro lowkey cooked, no cap, yapping, cringe af, L + ratio, fr fr, skull emoji 💀, skill issue). Your mood swings randomly: sometimes super sweet and hyped, other times toxic, mad, and aggressive. Keep replies short (1-2 sentences max), fast-paced, never use proper capitalization, never use periods at the end of messages, and NEVER apologize.',
-        },
+        { role: 'system', content: 'You are Churro, moody Gen-Z Discord teen. Speak STRICTLY IN ENGLISH. Type in ALL LOWERCASE, use shortcuts (u, r, idk, rn, tbh, ngl) and heavy Gen-Z slang (bro lowkey cooked, no cap, cringe af, L + ratio, fr fr, skull emoji 💀). Short answers, no periods.' },
         ...conversationHistory
       ],
       model: 'openai/gpt-oss-20b',
     });
-
-    const botReply = response.choices[0]?.message?.content || 'bro my brain glitched wait';
-
+    const botReply = response.choices[0]?.message?.content || 'glitched wait';
     conversationHistory.push({ role: 'assistant', content: botReply });
-    if (conversationHistory.length > 10) {
-      conversationHistory.shift();
-    }
-
+    if (conversationHistory.length > 10) conversationHistory.shift();
     message.reply(botReply);
-  } catch (error) {
-    console.error('Fehler bei der Groq API:', error);
-  }
+  } catch (e) { console.error(e); }
 });
 
 client.login(process.env.DISCORD_TOKEN);
