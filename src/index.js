@@ -12,6 +12,7 @@ const client = new Client({
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+// Exakte Kanal-ID als String
 const TARGET_CHANNEL_ID = '1542714940995928084';
 
 client.once('ready', () => {
@@ -19,8 +20,13 @@ client.once('ready', () => {
 });
 
 client.on('messageCreate', async (message) => {
+  // 1. Ignoriere Bot-Nachrichten
   if (message.author.bot) return;
-  if (message.channel.id !== TARGET_CHANNEL_ID) return;
+
+  // 2. Erzwungener Kanal-Filter (bricht ab, wenn die ID nicht exakt übereinstimmt)
+  if (String(message.channel.id) !== TARGET_CHANNEL_ID) {
+    return;
+  }
 
   try {
     const response = await groq.chat.completions.create({
