@@ -22,7 +22,7 @@ client.on('messageCreate', async (message) => {
   try {
     const response = await groq.chat.completions.create({
       messages: [{ role: 'user', content: message.content }],
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-80b-instant',
     });
 
     message.reply(response.choices[0]?.message?.content || 'Keine Antwort erhalten.');
