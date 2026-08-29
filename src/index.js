@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits } = require('discord.js');
-const OpenAI = require('openai');
+const Groq = require('groq-sdk');
 require('dotenv').config();
 
 const client = new Client({
@@ -10,9 +10,7 @@ const client = new Client({
   ],
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 client.once('ready', () => {
   console.log(`Bot ist online als ${client.user.tag}!`);
@@ -22,12 +20,12 @@ client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+    const response = await groq.chat.completions.create({
       messages: [{ role: 'user', content: message.content }],
+      model: 'llama-3.3-70b-versatile',
     });
 
-    message.reply(response.choices[0].message.content);
+    message.reply(response.choices[0]?.message?.content || 'Keine Antwort erhalten.');
   } catch (error) {
     console.error('Fehler:', error);
   }
