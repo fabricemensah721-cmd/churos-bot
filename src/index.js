@@ -12,20 +12,29 @@ const client = new Client({
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+const TARGET_CHANNEL_ID = '1542714940995928084';
+
 client.once('ready', () => {
   console.log(`Bot ist online als ${client.user.tag}!`);
 });
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+  if (message.channel.id !== TARGET_CHANNEL_ID) return;
 
   try {
     const response = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: message.content }],
+      messages: [
+        {
+          role: 'system',
+          content: 'You are Churro, a Discord bot speaking casual Gen-Z / youth slang English. Use terms like fr, ngl, lowkey, bet, no cap, bro, etc. Keep replies concise, naturally informal, and energetic.',
+        },
+        { role: 'user', content: message.content },
+      ],
       model: 'openai/gpt-oss-20b',
     });
 
-    message.reply(response.choices[0]?.message?.content || 'Keine Antwort erhalten.');
+    message.reply(response.choices[0]?.message?.content || 'No response, my bad.');
   } catch (error) {
     console.error('Fehler:', error);
   }
