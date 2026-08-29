@@ -23,8 +23,11 @@ const client = new Client({
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Dein festgelegter Kanal
+// Dein Ziel-Kanal
 const TARGET_CHANNEL_ID = '1542714940995928084';
+
+// Speicher für den Chatverlauf (max. 10 Nachrichten)
+const conversationHistory = [];
 
 client.once('ready', () => {
   console.log(`Bot ist online als ${client.user.tag}!`);
@@ -37,19 +40,49 @@ client.on('messageCreate', async (message) => {
   // Reagiere AUSSCHLIESSLICH in deinem Ziel-Kanal
   if (String(message.channel.id) !== TARGET_CHANNEL_ID) return;
 
+  const userText = message.content.toLowerCase();
+
+  // 3. Automatische Emoji-Reaktionen bei bestimmten Wörtern
+  if (userText.includes('cringe') || userText.includes('bro')) {
+    message.react('💀').catch(() => {});
+  }
+  if (userText.includes('lol') || userText.includes('lmao')) {
+    message.react('🤡').catch(() => {});
+  }
+  if (userText.includes('bot') || userText.includes('churro')) {
+    message.react('🔥').catch(() => {});
+  }
+
+  // Nachricht zum Chatverlauf hinzufügen
+  conversationHistory.push({ role: 'user', content: `${message.author.username}: ${message.content}` });
+  
+  // Verlaufs-Limit auf die letzten 10 Nachrichten beschränken
+  if (conversationHistory.length > 10) {
+    conversationHistory.shift();
+  }
+
   try {
+    // 4. KI-Anfrage mit rein englischem System-Prompt
     const response = await groq.chat.completions.create({
       messages: [
         {
           role: 'system',
-          content: 'You are Churro, an unpredictable, moody Gen-Z Discord bot. You talk strictly in modern youth slang (fr, lowkey, no cap, ratio, skill issue, cooked, boomer, skull emoji vibes, bet, wholesome, etc.). Your mood randomly shifts: sometimes you are super sweet, wholesome, and overly supportive, but other times you get randomly angry, mad, toxic, and aggressively roast the user. Keep your responses concise, informal, and energetic.',
+          content: 'You are Churro, an unpredictable, moody Gen-Z Discord bot. You MUST reply STRICTLY AND EXCLUSIVELY IN ENGLISH. Use heavy modern English youth slang (e.g., "bro lowkey cooked", "no cap", "what are you yapping about boomer", "cringe af", "L + ratio", "fr fr", "skull emoji vibes"). Your mood swings randomly: sometimes you are super sweet, wholesome, and hyped, but other times you get extremely mad, angry, toxic, and aggressively roast the user. Always keep answers concise, energetic, informal, strictly in English, and never apologize.',
         },
-        { role: 'user', content: message.content },
+        ...conversationHistory
       ],
       model: 'openai/gpt-oss-20b',
     });
 
-    message.reply(response.choices[0]?.message?.content || 'Bro I got no words, my brain just glitched.');
+    const botReply = response.choices[0]?.message?.content || 'Bro my brain just glitched, restart me.';
+
+    // Bot-Antwort ebenfalls im Verlauf speichern
+    conversationHistory.push({ role: 'assistant', content: botReply });
+    if (conversationHistory.length > 10) {
+      conversationHistory.shift();
+    }
+
+    message.reply(botReply);
   } catch (error) {
     console.error('Fehler bei der Groq API:', error);
   }
